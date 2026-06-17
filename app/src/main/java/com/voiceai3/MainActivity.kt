@@ -51,19 +51,26 @@ class MainActivity : AppCompatActivity() {
         setContentView(root)
 
         root.addView(TextView(this).apply {
-            text = "Voice AI"; textSize = 28f; setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
+            text = "Voice AI"
+            textSize = 28f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
         })
 
         root.addView(TextView(this).apply {
             text = "Awaaz se apna phone control karein"
-            textSize = 13f; setTextColor(Color.parseColor("#94A3B8")); gravity = Gravity.CENTER
+            textSize = 13f
+            setTextColor(Color.parseColor("#94A3B8"))
+            gravity = Gravity.CENTER
             setPadding(0, dp * 6, 0, dp * 20)
         })
 
         outputTv = TextView(this).apply {
-            text = "Yahan awaaz ki samajh aayegi"; textSize = 15f
-            setTextColor(Color.WHITE); gravity = Gravity.CENTER
+            text = "Yahan awaaz ki samajh aayegi"
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#111120"))
             setPadding(dp * 20, dp * 20, dp * 20, dp * 20)
         }
@@ -72,15 +79,19 @@ class MainActivity : AppCompatActivity() {
         val btnText = "TAP KAR KE\nBOLEIN"
 
         micBtn = TextView(this).apply {
-            text = btnText; textSize = 16f; gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
+            text = btnText
+            textSize = 16f
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
             background = GradientDrawable().also {
                 it.shape = GradientDrawable.OVAL
                 it.setColor(Color.parseColor("#7B2FBE"))
             }
         }
         root.addView(micBtn, LinearLayout.LayoutParams(dp * 200, dp * 200).also {
-            it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = dp * 24
+            it.gravity = Gravity.CENTER_HORIZONTAL
+            it.bottomMargin = dp * 24
         })
 
         micBtn.setOnTouchListener { _, ev ->
@@ -92,14 +103,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         statusTv = TextView(this).apply {
-            text = "Tayyar hoon"; textSize = 13f
-            setTextColor(Color.parseColor("#94A3B8")); gravity = Gravity.CENTER
+            text = "Tayyar hoon"
+            textSize = 13f
+            setTextColor(Color.parseColor("#94A3B8"))
+            gravity = Gravity.CENTER
         }
         root.addView(statusTv)
 
         root.addView(TextView(this).apply {
-            text = "Accessibility Service Enable Karein"; textSize = 13f
-            setTextColor(Color.parseColor("#22D3EE")); gravity = Gravity.CENTER
+            text = "Accessibility Service Enable Karein"
+            textSize = 13f
+            setTextColor(Color.parseColor("#22D3EE"))
+            gravity = Gravity.CENTER
             setPadding(0, dp * 20, 0, 0)
             setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         })
@@ -125,7 +140,9 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.SEND_SMS,
             Manifest.permission.CAMERA
         )
-        val need = perms.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+        val need = perms.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
         if (need.isNotEmpty()) ActivityCompat.requestPermissions(this, need.toTypedArray(), 100)
 
         registerReceiver(accReceiver, IntentFilter("com.voiceai3.ACCESSIBILITY_CONNECTED"))
@@ -178,7 +195,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        sr?.destroy(); tts.shutdown()
+        sr?.destroy()
+        tts.shutdown()
         unregisterReceiver(accReceiver)
     }
 }
