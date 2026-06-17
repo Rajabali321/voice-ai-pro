@@ -1,47 +1,58 @@
-name: 🔨 Voice AI Pro - APK Build
+name: Voice AI Pro - APK Build
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  build-apk:
-    name: 📦 APK Banana
-    runs-on: ubuntu-latest
+  build:
+    name: Build APK
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
 
     steps:
-      - name: 📥 Code checkout
+
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ☕ Java 17 Setup
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 🔧 Gradle 8.4 Download
+      - name: Download Gradle 8.4
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O gradle.zip
-          unzip -q gradle.zip -d gradle_dist
-          echo "GRADLE_HOME=$PWD/gradle_dist/gradle-8.4" >> $GITHUB_ENV
-          echo "$PWD/gradle_dist/gradle-8.4/bin" >> $GITHUB_PATH
+          echo "Downloading Gradle 8.4..."
+          wget -q "https://services.gradle.org/distributions/gradle-8.4-bin.zip" -O /tmp/gradle.zip
+          echo "Extracting..."
+          unzip -q /tmp/gradle.zip -d /tmp/
+          ls /tmp/gradle-8.4/bin/
+          /tmp/gradle-8.4/bin/gradle --version
+          echo "Gradle ready!"
 
-      - name: 🤖 Android SDK Setup
+      - name: Setup Android SDK path
         run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
           echo "sdk.dir=$ANDROID_HOME" > local.properties
+          cat local.properties
 
-      - name: 🏗️ APK Build
-        run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: ✏️ APK Rename
+      - name: Build Debug APK
         run: |
-          mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/VoiceAIPro-v3.0.apk
+          /tmp/gradle-8.4/bin/gradle assembleDebug --no-daemon --stacktrace
 
-      - name: 📤 APK Upload
+      - name: Check APK
+        run: |
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            echo "APK ban gayi!"
+            ls -lh app/build/outputs/apk/debug/
+          else
+            echo "APK nahi mili"
+            find . -name "*.apk" 2>/dev/null
+          fi
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: VoiceAIPro-APK
-          path: release/VoiceAIPro-v3.0.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
