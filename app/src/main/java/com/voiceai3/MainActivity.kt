@@ -1,22 +1,24 @@
 package com.voiceai3
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
-import android.text.TextUtils
 import android.view.Gravity
 import android.view.MotionEvent
-import android.view.View
-import android.widget.*
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -25,198 +27,158 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tts: TextToSpeech
-    private var speechRecognizer: SpeechRecognizer? = null
-    private lateinit var commandEngine: CommandEngine
-    private lateinit var transcriptView: TextView
-    private lateinit var responseView: TextView
-    private lateinit var micButton: LinearLayout
-    private lateinit var micIcon: TextView
-    private lateinit var historyLayout: LinearLayout
-    private lateinit var accessibilityBanner: LinearLayout
-    private lateinit var statusDot: View
-    private lateinit var statusText: TextView
-    private lateinit var pulseRing: View
-    private var isListening = false
-    private var isMuted = false
-    private val handler = Handler(Looper.getMainLooper())
-    private val history = mutableListOf<Pair<String,String>>()
+    private var sr: SpeechRecognizer? = null
+    private lateinit var engine: CommandEngine
+    private lateinit var outputTv: TextView
+    private lateinit var statusTv: TextView
+    private lateinit var micBtn: TextView
+    private var ttsOk = false
 
-    private val BG = Color.parseColor("#0A0A0F")
-    private val CARD = Color.parseColor("#12121A")
-    private val PURPLE = Color.parseColor("#7B2FBE")
-    private val PURPLE_L = Color.parseColor("#A855F7")
-    private val CYAN = Color.parseColor("#06B6D4")
-    private val GREEN = Color.parseColor("#10B981")
-    private val RED = Color.parseColor("#EF4444")
-    private val TEXT = Color.WHITE
-    private val SUB = Color.parseColor("#9CA3AF")
-    private val ACCENT = Color.parseColor("#1E1B2E")
-    private val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
-    private val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
-
-    private val PERMS = arrayOf(
-        Manifest.permission.RECORD_AUDIO, Manifest.permission.CALL_PHONE,
-        Manifest.permission.SEND_SMS, Manifest.permission.READ_CONTACTS,
-        Manifest.permission.CAMERA, Manifest.permission.READ_PHONE_STATE
-    )
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        window.statusBarColor = BG; window.navigationBarColor = BG
-        buildUI(); initTTS()
-        val missing = PERMS.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
-        if (missing.isNotEmpty()) ActivityCompat.requestPermissions(this, missing.toTypedArray(), 100)
-        checkAccessibility()
+    private val accReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) { updateBadge() }
     }
 
-    override fun onResume() { super.onResume(); checkAccessibility() }
-    override fun onDestroy() { super.onDestroy(); speechRecognizer?.destroy(); if(::tts.isInitialized) tts.shutdown() }
+    override fun onCreate(s: Bundle?) {
+        super.onCreate(s)
+        val dp = resources.displayMetrics.density.toInt()
 
-    private fun buildUI() {
-        val scroll = ScrollView(this).apply { setBackgroundColor(BG); isFillViewport = true }
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(12), dp(16), dp(80)) }
-        scroll.addView(root); setContentView(scroll)
-
-        // Header
-        val hdr = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0,dp(8),0,dp(20)) }
-        val logo = TextView(this).apply { text = "⚡ Voice AI Pro"; textSize = 20f; setTextColor(PURPLE_L); typeface = android.graphics.Typeface.DEFAULT_BOLD; layoutParams = LinearLayout.LayoutParams(0, WRAP).apply { weight=1f } }
-        val sc = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        statusDot = View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(10),dp(10)).apply{marginEnd=dp(6)}; background = circle(SUB) }
-        statusText = TextView(this).apply { text = "Ready"; textSize = 12f; setTextColor(SUB) }
-        val muteBtn = TextView(this).apply { text = "🔊"; textSize = 18f; setPadding(dp(12),dp(6),dp(12),dp(6)); setOnClickListener { isMuted=!isMuted; text=if(isMuted)"🔇" else "🔊"; if(isMuted) tts.stop() } }
-        sc.addView(statusDot); sc.addView(statusText); hdr.addView(logo); hdr.addView(sc); hdr.addView(muteBtn); root.addView(hdr)
-
-        // Accessibility banner
-        accessibilityBanner = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(Color.parseColor("#1A0A00")); setPadding(dp(14),dp(12),dp(14),dp(12))
-            layoutParams = LinearLayout.LayoutParams(MATCH,WRAP).apply{bottomMargin=dp(12)}
-            visibility = View.GONE
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#0A0A0F"))
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp * 20, dp * 40, dp * 20, dp * 20)
         }
-        val bannerText = TextView(this).apply { text = "⚠ Accessibility Service band hai — Full control ke liye enable karein"; textSize=12f; setTextColor(Color.parseColor("#FCD34D")); layoutParams = LinearLayout.LayoutParams(0,WRAP).apply{weight=1f} }
-        val enableBtn = TextView(this).apply { text="Enable"; textSize=12f; setTextColor(Color.WHITE); setBackgroundColor(Color.parseColor("#D97706")); setPadding(dp(10),dp(6),dp(10),dp(6)); setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK}) } }
-        accessibilityBanner.addView(bannerText); accessibilityBanner.addView(enableBtn); root.addView(accessibilityBanner)
+        setContentView(root)
 
-        // Transcript card
-        val tc = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(CARD); setPadding(dp(16),dp(14),dp(16),dp(14)); layoutParams=LinearLayout.LayoutParams(MATCH,WRAP).apply{bottomMargin=dp(8)} }
-        val tl = TextView(this).apply { text="TRANSCRIPT"; textSize=10f; setTextColor(SUB); letterSpacing=0.15f; setPadding(0,0,0,dp(6)) }
-        transcriptView = TextView(this).apply { text="Mic dabao aur bolein..."; textSize=17f; setTextColor(SUB); maxLines=4; ellipsize=TextUtils.TruncateAt.END }
-        tc.addView(tl); tc.addView(transcriptView); root.addView(tc)
-
-        // Response card
-        val rc = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(ACCENT); setPadding(dp(16),dp(14),dp(16),dp(14)); layoutParams=LinearLayout.LayoutParams(MATCH,WRAP).apply{bottomMargin=dp(20)} }
-        val rl = TextView(this).apply { text="RESPONSE"; textSize=10f; setTextColor(CYAN); letterSpacing=0.15f; setPadding(0,0,0,dp(6)) }
-        responseView = TextView(this).apply { text="Level 3 tayyar hai!"; textSize=15f; setTextColor(TEXT) }
-        rc.addView(rl); rc.addView(responseView); root.addView(rc)
-
-        // Mic button
-        val mc = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setPadding(0,dp(8),0,dp(24)) }
-        pulseRing = View(this).apply { val s=dp(100); layoutParams=LinearLayout.LayoutParams(s,s).apply{gravity=Gravity.CENTER}; background=circle(Color.parseColor("#3D1A7A")); alpha=0f }
-        micButton = LinearLayout(this).apply { val s=dp(80); layoutParams=LinearLayout.LayoutParams(s,s).apply{gravity=Gravity.CENTER; setMargins(-dp(90),-dp(10),0,0)}; background=circle(PURPLE); gravity=Gravity.CENTER; elevation=dp(8).toFloat(); isClickable=true; isFocusable=true }
-        micIcon = TextView(this).apply { text="🎤"; textSize=28f; gravity=Gravity.CENTER }
-        micButton.addView(micIcon); micButton.setOnClickListener { if(isListening) stopListening() else startListening() }
-        micButton.setOnTouchListener { v, e -> when(e.action){ MotionEvent.ACTION_DOWN->v.animate().scaleX(.92f).scaleY(.92f).setDuration(100).start(); MotionEvent.ACTION_UP,MotionEvent.ACTION_CANCEL->v.animate().scaleX(1f).scaleY(1f).setDuration(100).start() }; false }
-        val hint = TextView(this).apply { text="Tap to speak"; textSize=12f; setTextColor(SUB); gravity=Gravity.CENTER; setPadding(0,dp(14),0,0) }
-        mc.addView(pulseRing); mc.addView(micButton); mc.addView(hint); root.addView(mc)
-
-        // Quick actions grid
-        val quickLabel = TextView(this).apply { text="Quick Commands"; textSize=13f; setTextColor(SUB); setPadding(0,0,0,dp(10)) }
-        root.addView(quickLabel)
-        val cmds = listOf("🔋 Battery" to "battery kitni hai","🌤 Weather" to "weather kya hai","💬 WhatsApp" to "whatsapp kholo","📷 Camera" to "camera kholo","🏠 Home" to "home jao","⬅ Back" to "wapas jao","📸 Screenshot" to "screenshot lo","🔦 Torch" to "torch on karo","🔕 Mute" to "mute karo","📝 Notes" to "notes dikhao")
-        var row: LinearLayout? = null
-        cmds.forEachIndexed { i, (lbl, cmd) ->
-            if (i%2==0) { row = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; layoutParams=LinearLayout.LayoutParams(MATCH,WRAP).apply{bottomMargin=dp(6)} }; root.addView(row) }
-            val btn = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setBackgroundColor(CARD); setPadding(dp(6),dp(12),dp(6),dp(12)); layoutParams=LinearLayout.LayoutParams(0,WRAP).apply{weight=1f; if(i%2==0) marginEnd=dp(4) else marginStart=dp(4)}; isClickable=true; isFocusable=true }
-            btn.setOnClickListener { transcriptView.text=cmd; if(::commandEngine.isInitialized) commandEngine.processCommand(cmd) }
-            btn.addView(TextView(this).apply{text=lbl.split(" ")[0]; textSize=22f; gravity=Gravity.CENTER})
-            btn.addView(TextView(this).apply{text=lbl.substring(lbl.indexOf(" ")+1); textSize=10f; setTextColor(SUB); gravity=Gravity.CENTER; setPadding(0,dp(4),0,0)})
-            row!!.addView(btn)
-        }
-
-        // History
-        root.addView(View(this).apply{layoutParams=LinearLayout.LayoutParams(MATCH,dp(20))})
-        root.addView(TextView(this).apply{text="Command History"; textSize=13f; setTextColor(SUB); setPadding(0,0,0,dp(10))})
-        historyLayout = LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
-        root.addView(historyLayout)
-    }
-
-    private fun initTTS() {
-        tts = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val ur = tts.setLanguage(Locale("ur","PK"))
-                if (ur == TextToSpeech.LANG_MISSING_DATA || ur == TextToSpeech.LANG_NOT_SUPPORTED)
-                    tts.setLanguage(Locale("en","IN"))
-                tts.setSpeechRate(0.88f)
-                commandEngine = CommandEngine(this, tts, { msg -> runOnUiThread { showResponse(msg) } }, { app -> runOnUiThread { setStatus("Opening $app...", CYAN) } })
-                handler.postDelayed({ tts.speak("Voice AI Level 3 tayyar hai", TextToSpeech.QUEUE_FLUSH, null, "w"); showResponse("Level 3 tayyar hai! Mic dabao aur command bolein") }, 500)
-            }
-        }
-    }
-
-    private fun startListening() {
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) { showResponse("Voice recognition available nahi hai"); return }
-        isListening = true
-        micButton.background = circle(RED); micIcon.text = "⏹"
-        setStatus("Sun raha hoon...", GREEN)
-        pulseRing.animate().alpha(0.5f).scaleX(1.3f).scaleY(1.3f).setDuration(600).start()
-        speechRecognizer?.destroy()
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-        speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(p: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rms: Float) { val s=1f+(rms/100f).coerceIn(0f,.3f); runOnUiThread{micButton.scaleX=s; micButton.scaleY=s} }
-            override fun onBufferReceived(b: ByteArray?) {}
-            override fun onEndOfSpeech() { runOnUiThread{setStatus("Processing...", CYAN)} }
-            override fun onError(error: Int) { runOnUiThread { stopListening(); setStatus(if(error==SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) "Mic permission chahiye!" else "Dobara bolein (err $error)", RED); handler.postDelayed({setStatus("Ready",SUB)},2000) } }
-            override fun onResults(results: Bundle?) {
-                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: ""
-                runOnUiThread { stopListening(); if(text.isNotBlank()){ transcriptView.text=text; transcriptView.setTextColor(TEXT); if(::commandEngine.isInitialized) commandEngine.processCommand(text) }; setStatus("Ready",SUB) }
-            }
-            override fun onPartialResults(p: Bundle?) { val t=p?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?:return; runOnUiThread{transcriptView.text="$t..."} }
-            override fun onEvent(e: Int, p: Bundle?) {}
+        root.addView(TextView(this).apply {
+            text = "Voice AI"; textSize = 28f; setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
         })
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+
+        root.addView(TextView(this).apply {
+            text = "Awaaz se apna phone control karein"
+            textSize = 13f; setTextColor(Color.parseColor("#94A3B8")); gravity = Gravity.CENTER
+            setPadding(0, dp * 6, 0, dp * 20)
+        })
+
+        outputTv = TextView(this).apply {
+            text = "Yahan awaaz ki samajh aayegi"; textSize = 15f
+            setTextColor(Color.WHITE); gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#111120"))
+            setPadding(dp * 20, dp * 20, dp * 20, dp * 20)
+        }
+        root.addView(outputTv, LinearLayout.LayoutParams(-1, -2).also { it.bottomMargin = dp * 24 })
+
+        val btnText = "TAP KAR KE\nBOLEIN"
+
+        micBtn = TextView(this).apply {
+            text = btnText; textSize = 16f; gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
+            background = GradientDrawable().also {
+                it.shape = GradientDrawable.OVAL
+                it.setColor(Color.parseColor("#7B2FBE"))
+            }
+        }
+        root.addView(micBtn, LinearLayout.LayoutParams(dp * 200, dp * 200).also {
+            it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = dp * 24
+        })
+
+        micBtn.setOnTouchListener { _, ev ->
+            when (ev.action) {
+                MotionEvent.ACTION_DOWN -> startListen()
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> sr?.stopListening()
+            }
+            true
+        }
+
+        statusTv = TextView(this).apply {
+            text = "Tayyar hoon"; textSize = 13f
+            setTextColor(Color.parseColor("#94A3B8")); gravity = Gravity.CENTER
+        }
+        root.addView(statusTv)
+
+        root.addView(TextView(this).apply {
+            text = "Accessibility Service Enable Karein"; textSize = 13f
+            setTextColor(Color.parseColor("#22D3EE")); gravity = Gravity.CENTER
+            setPadding(0, dp * 20, 0, 0)
+            setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        })
+
+        tts = TextToSpeech(this) { status ->
+            ttsOk = status == TextToSpeech.SUCCESS
+            if (ttsOk) {
+                for (loc in listOf(Locale("ur", "PK"), Locale("en", "IN"), Locale.ENGLISH)) {
+                    if (tts.setLanguage(loc) >= TextToSpeech.LANG_AVAILABLE) break
+                }
+            }
+        }
+
+        engine = CommandEngine(this, tts,
+            onResponse = { msg -> runOnUiThread { outputTv.text = msg; statusTv.text = "Tayyar" } },
+            onAppOpen  = { app -> runOnUiThread { statusTv.text = app + " khul raha" } }
+        )
+
+        val perms = arrayOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.CAMERA
+        )
+        val need = perms.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+        if (need.isNotEmpty()) ActivityCompat.requestPermissions(this, need.toTypedArray(), 100)
+
+        registerReceiver(accReceiver, IntentFilter("com.voiceai3.ACCESSIBILITY_CONNECTED"))
+    }
+
+    private fun startListen() {
+        if (!ttsOk) { statusTv.text = "TTS tayyar nahi"; return }
+        statusTv.text = "Sun raha hoon..."
+        micBtn.text = "SUN RAHA\nHOON..."
+        micBtn.background = GradientDrawable().also {
+            it.shape = GradientDrawable.OVAL
+            it.setColor(Color.parseColor("#DC2626"))
+        }
+        sr?.destroy()
+        sr = SpeechRecognizer.createSpeechRecognizer(this)
+        sr?.setRecognitionListener(object : RecognitionListener {
+            override fun onResults(r: Bundle?) {
+                val txt = r?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.get(0) ?: ""
+                outputTv.text = "Suna: " + txt
+                engine.process(txt)
+                resetBtn()
+            }
+            override fun onError(e: Int) { statusTv.text = "Dobara bolein"; resetBtn() }
+            override fun onReadyForSpeech(p: Bundle?) { statusTv.text = "Bol sakte hain..." }
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(v: Float) {}
+            override fun onBufferReceived(b: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onPartialResults(p: Bundle?) {}
+            override fun onEvent(t: Int, p: Bundle?) {}
+        })
+        sr?.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ur-PK")
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-        }
-        try { speechRecognizer?.startListening(intent) } catch(e: Exception) { intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"en-IN"); speechRecognizer?.startListening(intent) }
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        })
     }
 
-    private fun stopListening() {
-        isListening = false
-        speechRecognizer?.stopListening()
-        micButton.background = circle(PURPLE); micIcon.text = "🎤"; micButton.scaleX=1f; micButton.scaleY=1f
-        pulseRing.animate().alpha(0f).scaleX(1f).scaleY(1f).setDuration(300).start()
-    }
-
-    private fun showResponse(msg: String) {
-        responseView.text = msg
-        val cmd = transcriptView.text.toString()
-        if (cmd != "Mic dabao aur bolein..." && history.size < 20) { history.add(0, Pair(cmd, msg)); updateHistory() }
-    }
-
-    private fun updateHistory() {
-        historyLayout.removeAllViews()
-        history.take(5).forEach { (cmd, resp) ->
-            val item = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(CARD); setPadding(dp(14),dp(12),dp(14),dp(12)); layoutParams=LinearLayout.LayoutParams(MATCH,WRAP).apply{bottomMargin=dp(6)} }
-            item.addView(TextView(this).apply{text="▶ $cmd"; textSize=13f; setTextColor(PURPLE_L)})
-            item.addView(TextView(this).apply{text=resp; textSize=12f; setTextColor(SUB); setPadding(0,dp(4),0,0)})
-            historyLayout.addView(item)
+    private fun resetBtn() {
+        runOnUiThread {
+            micBtn.text = "TAP KAR KE\nBOLEIN"
+            micBtn.background = GradientDrawable().also {
+                it.shape = GradientDrawable.OVAL
+                it.setColor(Color.parseColor("#7B2FBE"))
+            }
         }
     }
 
-    private fun setStatus(t: String, color: Int) { statusText.text=t; statusText.setTextColor(color); statusDot.background=circle(color) }
+    private fun updateBadge() {}
 
-    private fun checkAccessibility() {
-        val enabled = try {
-            val s = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
-            s.contains(packageName, ignoreCase = true) || VoiceAccessibilityService.instance != null
-        } catch(e: Exception) { false }
-        accessibilityBanner.visibility = if(enabled) View.GONE else View.VISIBLE
+    override fun onDestroy() {
+        super.onDestroy()
+        sr?.destroy(); tts.shutdown()
+        unregisterReceiver(accReceiver)
     }
-
-    private fun circle(color: Int) = android.graphics.drawable.GradientDrawable().apply { shape=android.graphics.drawable.GradientDrawable.OVAL; setColor(color) }
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 }
