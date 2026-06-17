@@ -9,10 +9,8 @@ class VoiceAIApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "voice_ai_channel", "Voice AI Service", NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Voice AI background service" }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            val ch = NotificationChannel("voice_ai_channel", "Voice AI Service", NotificationManager.IMPORTANCE_LOW)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
         }
     }
 }
