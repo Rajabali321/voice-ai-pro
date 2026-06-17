@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Voice AI</string>
-    <string name="accessibility_service_description">VoiceAI Full Control allows complete voice control of your phone using Accessibility Service.</string>
+    <string name="accessibility_service_description">VoiceAI Full Control - complete voice control of your phone.</string>
 </resources>
