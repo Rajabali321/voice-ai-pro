@@ -52,18 +52,16 @@ class VoiceAccessibilityService : AccessibilityService() {
     fun scrollDown(times: Int = 1) {
         repeat(times) {
             val root = rootInActiveWindow ?: return@repeat
-            val scrollable = findScrollableNode(root)
-            scrollable?.performAction(ACTION_SCROLL_FORWARD)
-            scrollable?.recycle(); root.recycle()
+            findScrollableNode(root)?.also { it.performAction(ACTION_SCROLL_FORWARD); it.recycle() }
+            root.recycle()
         }
     }
 
     fun scrollUp(times: Int = 1) {
         repeat(times) {
             val root = rootInActiveWindow ?: return@repeat
-            val scrollable = findScrollableNode(root)
-            scrollable?.performAction(ACTION_SCROLL_BACKWARD)
-            scrollable?.recycle(); root.recycle()
+            findScrollableNode(root)?.also { it.performAction(ACTION_SCROLL_BACKWARD); it.recycle() }
+            root.recycle()
         }
     }
 
@@ -71,8 +69,7 @@ class VoiceAccessibilityService : AccessibilityService() {
         if (node.isScrollable) return node
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
-            val result = findScrollableNode(child)
-            if (result != null) return result
+            findScrollableNode(child)?.let { child.recycle(); return it }
             child.recycle()
         }
         return null
@@ -96,8 +93,7 @@ class VoiceAccessibilityService : AccessibilityService() {
     }
 
     private fun findAndClickByDescription(node: AccessibilityNodeInfo, desc: String): Boolean {
-        val nodeDesc = node.contentDescription?.toString() ?: ""
-        if (nodeDesc.contains(desc, ignoreCase = true) && node.isClickable) {
+        if ((node.contentDescription?.toString() ?: "").contains(desc, ignoreCase = true) && node.isClickable) {
             node.performAction(ACTION_CLICK); return true
         }
         for (i in 0 until node.childCount) {
@@ -111,26 +107,17 @@ class VoiceAccessibilityService : AccessibilityService() {
     private fun clickNodeOrParent(node: AccessibilityNodeInfo): Boolean {
         if (node.isClickable) { node.performAction(ACTION_CLICK); return true }
         val parent = node.parent ?: return false
-        val result = clickNodeOrParent(parent)
-        parent.recycle()
-        return result
+        val result = clickNodeOrParent(parent); parent.recycle(); return result
     }
 
     fun tapAtCoordinates(x: Float, y: Float) {
         val path = Path().apply { moveTo(x, y) }
-        val stroke = GestureDescription.StrokeDescription(path, 0, 50)
-        dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
-    }
-
-    fun swipe(startX: Float, startY: Float, endX: Float, endY: Float, duration: Long = 300) {
-        val path = Path().apply { moveTo(startX, startY); lineTo(endX, endY) }
-        val stroke = GestureDescription.StrokeDescription(path, 0, duration)
-        dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+        dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 50)).build(), null, null)
     }
 
     fun typeText(text: String): Boolean {
         val root = rootInActiveWindow ?: return false
-        var inputNode = findFocusedInput(root) ?: findEditableNode(root)
+        val inputNode = findFocusedInput(root) ?: findEditableNode(root)
         root.recycle()
         if (inputNode == null) return false
         inputNode.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
@@ -156,54 +143,43 @@ class VoiceAccessibilityService : AccessibilityService() {
     }
 
     fun readScreenContent(): String {
-        val root = rootInActiveWindow ?: return ""
-        val text = getAllText(root); root.recycle(); return text
+        val root = rootInActiveWindow ?: return ""; val t = getAllText(root); root.recycle(); return t
     }
 
     private fun getAllText(node: AccessibilityNodeInfo): String {
         val sb = StringBuilder()
         node.text?.let { sb.append(it).append(" ") }
         node.contentDescription?.let { sb.append(it).append(" ") }
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            sb.append(getAllText(child)); child.recycle()
-        }
+        for (i in 0 until node.childCount) { val c = node.getChild(i) ?: continue; sb.append(getAllText(c)); c.recycle() }
         return sb.toString()
     }
 
-    private fun findFocusedInput(node: AccessibilityNodeInfo) =
-        node.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+    private fun findFocusedInput(node: AccessibilityNodeInfo) = node.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
 
     private fun findEditableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
         if (node.isEditable) return node
         for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            val result = findEditableNode(child)
-            if (result != null) { child.recycle(); return result }
-            child.recycle()
+            val c = node.getChild(i) ?: continue
+            findEditableNode(c)?.let { c.recycle(); return it }
+            c.recycle()
         }
         return null
     }
 
     fun sendWhatsAppMessage(contactName: String, message: String) {
         try {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setPackage("com.whatsapp")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(intent)
+            startActivity(Intent(Intent.ACTION_VIEW).apply {
+                setPackage("com.whatsapp"); flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
         } catch (e: Exception) { openApp("com.whatsapp") }
-
         handler.postDelayed({ clickByDescription("Search") || clickByText("Search") }, 1500)
         handler.postDelayed({ typeText(contactName) }, 2500)
         handler.postDelayed({
             val root = rootInActiveWindow ?: return@postDelayed
-            val contacts = root.findAccessibilityNodeInfosByText(contactName)
-            if (!contacts.isNullOrEmpty()) {
-                clickNodeOrParent(contacts[0])
-                contacts.forEach { it.recycle() }
-            }
-            root.recycle()
+            root.findAccessibilityNodeInfosByText(contactName)?.also { nodes ->
+                if (nodes.isNotEmpty()) clickNodeOrParent(nodes[0])
+                nodes.forEach { it.recycle() }
+            }; root.recycle()
         }, 4000)
         handler.postDelayed({ typeText(message) }, 5500)
         handler.postDelayed({ clickByDescription("Send") || clickByText("Send") }, 6500)
@@ -212,44 +188,29 @@ class VoiceAccessibilityService : AccessibilityService() {
     fun openApp(packageName: String): Boolean {
         return try {
             val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(intent); true
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK; startActivity(intent); true
         } catch (e: Exception) { false }
     }
 
     fun findAppByName(appName: String): String? {
         val lower = appName.lowercase().trim()
-        val knownApps = mapOf(
-            "whatsapp" to "com.whatsapp",
-            "youtube" to "com.google.android.youtube",
-            "instagram" to "com.instagram.android",
-            "facebook" to "com.facebook.katana",
-            "chrome" to "com.android.chrome",
-            "camera" to "com.android.camera2",
-            "settings" to "com.android.settings",
-            "gmail" to "com.google.android.gm",
-            "maps" to "com.google.android.apps.maps",
-            "calculator" to "com.android.calculator2",
-            "clock" to "com.android.deskclock",
-            "gallery" to "com.google.android.apps.photos",
-            "photos" to "com.google.android.apps.photos",
-            "contacts" to "com.google.android.contacts",
-            "phone" to "com.google.android.dialer",
-            "messages" to "com.google.android.apps.messaging",
-            "play store" to "com.android.vending",
-            "netflix" to "com.netflix.mediaclient",
-            "spotify" to "com.spotify.music",
-            "tiktok" to "com.zhiliaoapp.musically",
-            "twitter" to "com.twitter.android",
-            "telegram" to "org.telegram.messenger",
-            "snapchat" to "com.snapchat.android",
-            "zoom" to "us.zoom.videomeetings",
-            "notes" to "com.google.android.keep",
-            "keep" to "com.google.android.keep"
+        val known = mapOf(
+            "whatsapp" to "com.whatsapp", "youtube" to "com.google.android.youtube",
+            "instagram" to "com.instagram.android", "facebook" to "com.facebook.katana",
+            "chrome" to "com.android.chrome", "camera" to "com.android.camera2",
+            "settings" to "com.android.settings", "gmail" to "com.google.android.gm",
+            "maps" to "com.google.android.apps.maps", "calculator" to "com.android.calculator2",
+            "clock" to "com.android.deskclock", "gallery" to "com.google.android.apps.photos",
+            "photos" to "com.google.android.apps.photos", "contacts" to "com.google.android.contacts",
+            "phone" to "com.google.android.dialer", "messages" to "com.google.android.apps.messaging",
+            "play store" to "com.android.vending", "netflix" to "com.netflix.mediaclient",
+            "spotify" to "com.spotify.music", "tiktok" to "com.zhiliaoapp.musically",
+            "twitter" to "com.twitter.android", "telegram" to "org.telegram.messenger",
+            "snapchat" to "com.snapchat.android", "zoom" to "us.zoom.videomeetings",
+            "notes" to "com.google.android.keep", "keep" to "com.google.android.keep"
         )
-        knownApps[lower]?.let { return it }
-        val apps = packageManager.getInstalledApplications(0)
-        for (app in apps) {
+        known[lower]?.let { return it }
+        packageManager.getInstalledApplications(0).forEach { app ->
             val label = packageManager.getApplicationLabel(app).toString().lowercase()
             if (label.contains(lower) || lower.contains(label)) return app.packageName
         }
