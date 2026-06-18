@@ -53,10 +53,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         dp = resources.displayMetrics.density.toInt()
-
-        scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#0A0A0F"))
-        }
+        scroll = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#0A0A0F")) }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp * 16, dp * 24, dp * 16, dp * 32)
@@ -64,27 +61,21 @@ class MainActivity : AppCompatActivity() {
         scroll.addView(root)
         setContentView(scroll)
 
-        // Title
         root.addView(TextView(this).apply {
             text = "Voice AI Pro"
-            textSize = 24f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
+            textSize = 24f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE); gravity = Gravity.CENTER
         }, lp(-1, -2, 0, dp * 4))
 
         root.addView(TextView(this).apply {
-            text = "v3.0  —  Bol ya Type karein"
+            text = "v3.0 - Bol ya Type karein"
             textSize = 12f
-            setTextColor(Color.parseColor("#6B7280"))
-            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#6B7280")); gravity = Gravity.CENTER
         }, lp(-1, -2, 0, dp * 16))
 
-        // Accessibility status pill
         accPill = TextView(this).apply {
             text = "Accessibility check ho raha hai..."
-            textSize = 12f
-            gravity = Gravity.CENTER
+            textSize = 12f; gravity = Gravity.CENTER
             setPadding(dp * 12, dp * 8, dp * 12, dp * 8)
             background = GradientDrawable().also {
                 it.cornerRadius = dp * 20f
@@ -94,7 +85,6 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(accPill, lp(-1, -2, 0, dp * 16))
 
-        // Output card
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp * 14, dp * 12, dp * 14, dp * 12)
@@ -106,34 +96,27 @@ class MainActivity : AppCompatActivity() {
         }
         recognizedTv = TextView(this).apply {
             text = "Awaaz ya text ka intezaar..."
-            textSize = 11f
-            setTextColor(Color.parseColor("#6B7280"))
+            textSize = 11f; setTextColor(Color.parseColor("#6B7280"))
         }
         outputTv = TextView(this).apply {
-            text = "Mic tap karein aur bolein, ya neechay type karein"
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            lineSpacingMultiplier = 1.4f
+            text = "Mic tap karein ya neechay type karein"
+            textSize = 14f; setTextColor(Color.WHITE); lineSpacingMultiplier = 1.4f
         }
         card.addView(recognizedTv, lp(-1, -2, 0, dp * 6))
         card.addView(outputTv)
         root.addView(card, lp(-1, -2, 0, dp * 20))
 
-        // Mic button
         micBtn = TextView(this).apply {
             text = "TAP KAR KE\nBOLEIN"
-            textSize = 15f
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
+            textSize = 15f; gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
             background = GradientDrawable().also {
                 it.shape = GradientDrawable.OVAL
                 it.setColor(Color.parseColor("#7B2FBE"))
             }
         }
         root.addView(micBtn, LinearLayout.LayoutParams(dp * 180, dp * 180).also {
-            it.gravity = Gravity.CENTER_HORIZONTAL
-            it.bottomMargin = dp * 8
+            it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = dp * 8
         })
         micBtn.setOnTouchListener { _, ev ->
             when (ev.action) {
@@ -144,23 +127,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         statusTv = TextView(this).apply {
-            text = "Tayyar  —  bol ya type karo"
-            textSize = 12f
-            setTextColor(Color.parseColor("#94A3B8"))
-            gravity = Gravity.CENTER
+            text = "Tayyar - bol ya type karo"
+            textSize = 12f; setTextColor(Color.parseColor("#94A3B8")); gravity = Gravity.CENTER
         }
         root.addView(statusTv, lp(-1, -2, 0, dp * 20))
 
-        // Text input row
         val inputRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         }
         cmdInput = EditText(this).apply {
             hint = "Command type karo..."
             setHintTextColor(Color.parseColor("#4B5563"))
-            setTextColor(Color.WHITE)
-            textSize = 14f
+            setTextColor(Color.WHITE); textSize = 14f
             inputType = InputType.TYPE_CLASS_TEXT
             imeOptions = EditorInfo.IME_ACTION_SEND
             setPadding(dp * 12, dp * 12, dp * 12, dp * 12)
@@ -174,11 +152,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         val sendBtn = TextView(this).apply {
-            text = ">"
-            textSize = 20f
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
+            text = ">"; textSize = 20f; gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
             background = GradientDrawable().also {
                 it.shape = GradientDrawable.OVAL
                 it.setColor(Color.parseColor("#7B2FBE"))
@@ -189,13 +164,10 @@ class MainActivity : AppCompatActivity() {
         inputRow.addView(sendBtn, LinearLayout.LayoutParams(dp * 52, dp * 52))
         root.addView(inputRow, lp(-1, -2, 0, dp * 28))
 
-        // Commands guide header
         root.addView(TextView(this).apply {
-            text = "Commands Guide — Tap karein"
-            textSize = 14f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.parseColor("#A78BFA"))
-            gravity = Gravity.CENTER
+            text = "Commands Guide - Tap karein"
+            textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.parseColor("#A78BFA")); gravity = Gravity.CENTER
             setPadding(dp * 12, dp * 12, dp * 12, dp * 12)
             background = GradientDrawable().also {
                 it.cornerRadius = dp * 8f
@@ -209,8 +181,7 @@ class MainActivity : AppCompatActivity() {
         }, lp(-1, -2, 0, dp * 8))
 
         helpBody = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
+            orientation = LinearLayout.VERTICAL; visibility = View.GONE
         }
         root.addView(helpBody)
         buildHelp()
@@ -227,7 +198,6 @@ class MainActivity : AppCompatActivity() {
             onResponse = { msg -> runOnUiThread { outputTv.text = msg; statusTv.text = "Tayyar" } },
             onAppOpen  = { app -> runOnUiThread { statusTv.text = "$app khul raha hai..." } }
         )
-
         val need = listOf(
             Manifest.permission.RECORD_AUDIO, Manifest.permission.CALL_PHONE,
             Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS,
@@ -259,25 +229,20 @@ class MainActivity : AppCompatActivity() {
             "note karo: kal meeting hai" to "note karo: kal meeting hai",
             "meri notes" to "meri notes",
             "google karo Pakistan news" to "google karo Pakistan news",
-            "TYPE & CLICK" to "",
-            "type karo Hello" to "type karo Hello",
-            "click karo Send" to "click karo Send",
-            "help" to "help"
+            "TYPE & CLICK" to "", "type karo Hello" to "type karo Hello",
+            "click karo Send" to "click karo Send", "help" to "help"
         )
         for ((label, fill) in items) {
             if (fill.isEmpty()) {
                 helpBody.addView(TextView(this).apply {
-                    text = label
-                    textSize = 11f
-                    typeface = Typeface.DEFAULT_BOLD
+                    text = label; textSize = 11f; typeface = Typeface.DEFAULT_BOLD
                     setTextColor(Color.parseColor("#7B2FBE"))
                     setPadding(dp * 4, dp * 12, 0, dp * 4)
                 })
             } else {
                 val f = fill
                 helpBody.addView(TextView(this).apply {
-                    text = label
-                    textSize = 13f
+                    text = label; textSize = 13f
                     setTextColor(Color.parseColor("#22D3EE"))
                     setPadding(dp * 12, dp * 8, dp * 12, dp * 8)
                     background = GradientDrawable().also {
@@ -300,12 +265,15 @@ class MainActivity : AppCompatActivity() {
     private fun updateAcc() {
         val on = VoiceAccessibilityService.instance != null
         runOnUiThread {
-            accPill.text = if (on) "Accessibility Active — Sab commands kaam karein ge"
-                else "Accessibility OFF — Tap to enable"
-            accPill.setTextColor(if (on) Color.parseColor("#34D399") else Color.parseColor("#F59E0B"))
-            (accPill.background as? GradientDrawable)?.setColor(
-                if (on) Color.parseColor("#064E3B") else Color.parseColor("#451A03")
-            )
+            if (on) {
+                accPill.text = "Accessibility Active - Sab commands kaam karein ge"
+                accPill.setTextColor(Color.parseColor("#34D399"))
+                (accPill.background as? GradientDrawable)?.setColor(Color.parseColor("#064E3B"))
+            } else {
+                accPill.text = "Accessibility OFF - Tap karein enable karne ke liye"
+                accPill.setTextColor(Color.parseColor("#F59E0B"))
+                (accPill.background as? GradientDrawable)?.setColor(Color.parseColor("#451A03"))
+            }
         }
     }
 
@@ -332,7 +300,8 @@ class MainActivity : AppCompatActivity() {
         sr = SpeechRecognizer.createSpeechRecognizer(this)
         sr?.setRecognitionListener(object : RecognitionListener {
             override fun onResults(r: Bundle?) {
-                val txt = r?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: ""
+                val txt = r?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull() ?: ""
                 recognizedTv.text = "Suna: $txt"
                 outputTv.text = "..."
                 engine.process(txt)
@@ -353,7 +322,8 @@ class MainActivity : AppCompatActivity() {
             override fun onBufferReceived(b: ByteArray?) {}
             override fun onEndOfSpeech() { statusTv.text = "Samajh raha hoon..." }
             override fun onPartialResults(p: Bundle?) {
-                val part = p?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: ""
+                val part = p?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull() ?: ""
                 if (part.isNotEmpty()) runOnUiThread { recognizedTv.text = "Suna: $part..." }
             }
             override fun onEvent(t: Int, p: Bundle?) {}
@@ -374,7 +344,7 @@ class MainActivity : AppCompatActivity() {
                 it.shape = GradientDrawable.OVAL
                 it.setColor(Color.parseColor("#7B2FBE"))
             }
-            statusTv.text = "Tayyar  —  bol ya type karo"
+            statusTv.text = "Tayyar - bol ya type karo"
         }
     }
 
