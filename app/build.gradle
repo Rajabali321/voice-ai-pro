@@ -4,7 +4,7 @@ apply plugin: 'kotlin-android'
 android {
     compileSdk 34
     namespace "com.voiceai3"
-
+ 
     defaultConfig {
         applicationId "com.voiceai3"
         minSdk 24
