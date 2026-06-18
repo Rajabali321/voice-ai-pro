@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
         }
         outputTv = TextView(this).apply {
             text = "Mic tap karein ya neechay type karein"
-            textSize = 14f; setTextColor(Color.WHITE); lineSpacingMultiplier = 1.4f
+            textSize = 14f; setTextColor(Color.WHITE); setLineSpacing(0f, 1.4f)
         }
         card.addView(recognizedTv, lp(-1, -2, 0, dp * 6))
         card.addView(outputTv)
