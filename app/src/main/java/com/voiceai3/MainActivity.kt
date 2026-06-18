@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
             textSize = 15f; gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
             background = GradientDrawable().also {
-                it.shape = GradientDrawable.OVAL
+                it.setShape(GradientDrawable.OVAL)
                 it.setColor(Color.parseColor("#7B2FBE"))
             }
         }
@@ -155,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             text = ">"; textSize = 20f; gravity = Gravity.CENTER
             typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
             background = GradientDrawable().also {
-                it.shape = GradientDrawable.OVAL
+                it.setShape(GradientDrawable.OVAL)
                 it.setColor(Color.parseColor("#7B2FBE"))
             }
             setOnClickListener { doSend() }
@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity() {
         statusTv.text = "Sun raha hoon..."
         micBtn.text = "SUN RAHA\nHOON..."
         micBtn.background = GradientDrawable().also {
-            it.shape = GradientDrawable.OVAL
+            it.setShape(GradientDrawable.OVAL)
             it.setColor(Color.parseColor("#DC2626"))
         }
         sr?.destroy()
@@ -341,7 +341,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             micBtn.text = "TAP KAR KE\nBOLEIN"
             micBtn.background = GradientDrawable().also {
-                it.shape = GradientDrawable.OVAL
+                it.setShape(GradientDrawable.OVAL)
                 it.setColor(Color.parseColor("#7B2FBE"))
             }
             statusTv.text = "Tayyar - bol ya type karo"
