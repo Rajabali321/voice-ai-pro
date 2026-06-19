@@ -53,4 +53,23 @@ class VoiceAccessibilityService : AccessibilityService() {
         if (node.isScrollable) { node.performAction(action); return }
         for (i in 0 until node.childCount) scrollNode(node.getChild(i), action)
     }
+
+    // ── Screen Text Extraction (used by Live Translate feature) ─
+    /**
+     * Walk the accessibility tree of the current screen and collect all
+     * visible text + content descriptions. Returns them as one string.
+     */
+    fun getScreenText(): String {
+        val sb = StringBuilder()
+        fun collect(node: AccessibilityNodeInfo?) {
+            node ?: return
+            val txt  = node.text?.toString()
+            val desc = node.contentDescription?.toString()
+            if (!txt.isNullOrBlank())  sb.append(txt).append(". ")
+            if (!desc.isNullOrBlank() && desc != txt) sb.append(desc).append(". ")
+            for (i in 0 until node.childCount) collect(node.getChild(i))
+        }
+        collect(rootInActiveWindow)
+        return sb.toString().trim()
+    }
 }
