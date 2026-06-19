@@ -17,7 +17,8 @@ class CommandEngine(
     private val ctx: Context,
     private val tts: TextToSpeech,
     private val onResponse: (String) -> Unit,
-    private val onAppOpen: (String) -> Unit
+    private val onAppOpen: (String) -> Unit,
+    private val onUnknown: ((String) -> Unit)? = null  // AI fallback for unrecognised commands
 ) {
 
     private fun say(text: String) {
@@ -277,10 +278,17 @@ class CommandEngine(
                 say("Main apps khol sakta hoon, call kar sakta hoon, WhatsApp message bhej sakta hoon, torch, volume, screenshot, time, battery — bas bolein aur main kar deta hoon!")
 
             // ════════════════════════════════════════════
-            //  UNKNOWN
+            //  UNKNOWN → try AI brain
             // ════════════════════════════════════════════
-            else ->
-                say("\"$raw\" samajh nahi aaya. Dobara bolein ya help type karein.")
+            else -> {
+                if (onUnknown != null) {
+                    onResponse("🤖 AI se pooch raha hoon...")
+                    tts.speak("Sochta hoon", TextToSpeech.QUEUE_FLUSH, null, null)
+                    onUnknown.invoke(raw)
+                } else {
+                    say("\"$raw\" samajh nahi aaya. Ask AI option try karein.")
+                }
+            }
         }
     }
 
