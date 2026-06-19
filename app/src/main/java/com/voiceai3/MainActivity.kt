@@ -321,12 +321,14 @@ class MainActivity : AppCompatActivity() {
         speech = SpeechRecognizer.createSpeechRecognizer(this)
         speech.setRecognitionListener(object : RecognitionListener {
 
-            override fun onReadyForSpeech(p: Bundle?) = ui.post {
-                isListening = true
-                btnMic.text = "⏹"
-                btnMic.background = oval("#CC2233")
-                tvLive.text = "Listening..."
-                tvLive.setTextColor(color("#44AAFF"))
+            override fun onReadyForSpeech(p: Bundle?) {
+                ui.post {
+                    isListening = true
+                    btnMic.text = "⏹"
+                    btnMic.background = oval("#CC2233")
+                    tvLive.text = "Listening..."
+                    tvLive.setTextColor(color("#44AAFF"))
+                }
             }
 
             // Live transcript — shows text AS you speak
@@ -348,10 +350,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onError(err: Int) = ui.post {
-                resetMicBtn()
-                tvLive.text = "Dobara tap karein (${errLabel(err)})"
-                tvLive.setTextColor(color("#888888"))
+            override fun onError(err: Int) {
+                ui.post {
+                    resetMicBtn()
+                    tvLive.text = "Dobara tap karein (${errLabel(err)})"
+                    tvLive.setTextColor(color("#888888"))
+                }
             }
 
             override fun onBeginningOfSpeech() {}
