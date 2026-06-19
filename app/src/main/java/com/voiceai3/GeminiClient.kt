@@ -7,7 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * GeminiClient — calls Google Gemini 1.5 Flash API.
+ * GeminiClient — calls Google Gemini 2.0 Flash API (free tier).
  * Free key from: https://aistudio.google.com/app/apikey
  * Key is stored in SharedPreferences under "gemini_key".
  */
@@ -21,27 +21,25 @@ class GeminiClient(private val ctx: Context) {
 
     val hasKey get() = apiKey.isNotBlank()
 
-    /**
-     * Send [userText] to Gemini. Runs on background thread.
-     * [callback] is called on the background thread — caller must post to UI if needed.
-     */
     fun ask(userText: String, callback: (String) -> Unit) {
         if (!hasKey) {
-            callback("⚙️ Gemini API key nahi hai. Settings (⚙) mein daalo — free key aistudio.google.com pe milti hai.")
+            callback("⚙️ Gemini API key nahi hai. Settings (⚙) mein daalo.")
             return
         }
         Thread {
+            var conn: HttpURLConnection? = null
             try {
+                // Using gemini-2.0-flash — fastest free model
                 val endpoint =
                     "https://generativelanguage.googleapis.com/v1beta/models/" +
-                    "gemini-1.5-flash:generateContent?key=${apiKey}"
+                    "gemini-2.0-flash:generateContent?key=${apiKey}"
 
-                val conn = (URL(endpoint).openConnection() as HttpURLConnection).also {
+                conn = (URL(endpoint).openConnection() as HttpURLConnection).also {
                     it.requestMethod = "POST"
                     it.setRequestProperty("Content-Type", "application/json")
                     it.doOutput = true
-                    it.connectTimeout = 10_000
-                    it.readTimeout    = 10_000
+                    it.connectTimeout = 12_000
+                    it.readTimeout    = 12_000
                 }
 
                 val systemPrompt =
@@ -62,6 +60,16 @@ class GeminiClient(private val ctx: Context) {
 
                 conn.outputStream.use { it.write(body.toString().toByteArray()) }
 
+                // Check HTTP response code first
+                val code = conn.responseCode
+                if (code != 200) {
+                    val errBody = try {
+                        conn.errorStream?.bufferedReader()?.readText()?.take(200) ?: "no details"
+                    } catch (ex: Exception) { "no details" }
+                    callback("❌ API Error $code — $errBody")
+                    return@Thread
+                }
+
                 val responseStr = conn.inputStream.bufferedReader().readText()
                 val answer = JSONObject(responseStr)
                     .getJSONArray("candidates")
@@ -72,11 +80,25 @@ class GeminiClient(private val ctx: Context) {
                     .getString("text")
                     .trim()
 
-                callback(answer)
+                callback("🤖 $answer")
 
             } catch (e: Exception) {
-                val msg = e.message?.take(80) ?: "unknown error"
-                callback("🤖 AI jawab nahi de saka: $msg")
+                val msg = e.message ?: "unknown error"
+                // Friendly error messages
+                val friendly = when {
+                    msg.contains("NETWORK_ERROR") || msg.contains("UnknownHost") ->
+                        "Network error — internet check karo"
+                    msg.contains("timeout") || msg.contains("SocketTimeout") ->
+                        "Timeout — connection slow hai, dobara try karo"
+                    msg.contains("PERMISSION_DENIED") || msg.contains("403") ->
+                        "API key galat ya expire — Settings mein nayi key daalo"
+                    msg.contains("400") ->
+                        "Bad request — key check karo"
+                    else -> msg.take(100)
+                }
+                callback("❌ $friendly")
+            } finally {
+                conn?.disconnect()
             }
         }.start()
     }
